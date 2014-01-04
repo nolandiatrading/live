@@ -65,25 +65,9 @@ public class BitstampConnect implements ConnectionEventListener,
         	pusher.subscribe("live_orders", this, "order_deleted","order_created","order_changed");
     }
     
-    public BitstampConnect(final EventHandler<RawEvent>... handlers) {
-		ExecutorService exec = Executors.newCachedThreadPool();
-		Disruptor<RawEvent> disruptor = new Disruptor<RawEvent>(RawEvent.BITSTAMP_EVENT_FACTORY, RING_BUFFER_SIZE, exec);
-        
-        disruptor.handleEventsWith(handlers);
-        this.ringBuffer = disruptor.start();
-        logger.info(String.format("Fired off Disruptor/RingBuffer of size[%d]", RING_BUFFER_SIZE));
-        
-        this.mapper = new ObjectMapper();
-        
-        String apiKey = API_KEY;
-        Pusher pusher = new Pusher(apiKey);
-        pusher.connect(this);
-        pusher.subscribe("live_trades", this, "trade");
-        logger.info(String.format("Fired off Pusher Live Data with apiKey[%s] and subscribed to 'live_trades' channel'", API_KEY));
-        
-        //TODO: Currently disabling orders data
-        if(ORDERS_ENABLED)
-        	pusher.subscribe("live_orders", this, "order_deleted","order_created","order_changed");
+    public void handleEventsWith(final EventHandler<RawEvent>... handlers)
+    {
+    	disruptor.handleEventsWith(handlers);
     }
 
     /* ConnectionEventListener implementation */
