@@ -23,7 +23,9 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
+@Service
 public class BitstampConnect implements ConnectionEventListener,
         ChannelEventListener, ExchangeAccess {
 
@@ -38,6 +40,26 @@ public class BitstampConnect implements ConnectionEventListener,
     private static final int RING_BUFFER_SIZE = 1024*4; //Must be a power of 2
     private static final String API_KEY = "de504dc5763aeef9ff52";
     private static final boolean ORDERS_ENABLED = false; //TODO: temporary
+    
+    public BitstampConnect() {
+		ExecutorService exec = Executors.newCachedThreadPool();
+		Disruptor<RawEvent> disruptor = new Disruptor<RawEvent>(RawEvent.BITSTAMP_EVENT_FACTORY, RING_BUFFER_SIZE, exec);
+        
+        this.ringBuffer = disruptor.start();
+        logger.info(String.format("Fired off Disruptor/RingBuffer of size[%d]", RING_BUFFER_SIZE));
+        
+        this.mapper = new ObjectMapper();
+        
+        String apiKey = API_KEY;
+        Pusher pusher = new Pusher(apiKey);
+        pusher.connect(this);
+        pusher.subscribe("live_trades", this, "trade");
+        logger.info(String.format("Fired off Pusher Live Data with apiKey[%s] and subscribed to 'live_trades' channel'", API_KEY));
+        
+        //TODO: Currently disabling orders data
+        if(ORDERS_ENABLED)
+        	pusher.subscribe("live_orders", this, "order_deleted","order_created","order_changed");
+    }
     
     public BitstampConnect(final EventHandler<RawEvent>... handlers) {
 		ExecutorService exec = Executors.newCachedThreadPool();

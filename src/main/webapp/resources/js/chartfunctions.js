@@ -120,7 +120,6 @@ function createCandleStickWithVolumeChart(url, exch, next_seq, divId) {
 	        lineWidth: 2,
 	        ordinal: false
 	    }],
-	    
 	    series: [{ 
 	        type: 'candlestick',
 	        name: 'USD/BTC',
