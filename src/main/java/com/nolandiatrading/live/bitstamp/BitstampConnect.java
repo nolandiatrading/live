@@ -23,11 +23,12 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.stereotype.Service;
 
 @Service
 public class BitstampConnect implements ConnectionEventListener,
-        ChannelEventListener, ExchangeAccess {
+        ChannelEventListener, ExchangeAccess, DisposableBean {
 
     private final long startTime = System.currentTimeMillis();
     private static final Logger logger = LoggerFactory.getLogger(BitstampConnect.class);
@@ -40,10 +41,13 @@ public class BitstampConnect implements ConnectionEventListener,
     private static final int RING_BUFFER_SIZE = 1024*4; //Must be a power of 2
     private static final String API_KEY = "de504dc5763aeef9ff52";
     private static final boolean ORDERS_ENABLED = false; //TODO: temporary
+    private ExecutorService exec;
+    private Disruptor<RawEvent> disruptor;
+    private Pusher pusher;
     
     public BitstampConnect() {
-		ExecutorService exec = Executors.newCachedThreadPool();
-		Disruptor<RawEvent> disruptor = new Disruptor<RawEvent>(RawEvent.BITSTAMP_EVENT_FACTORY, RING_BUFFER_SIZE, exec);
+		exec = Executors.newCachedThreadPool();
+		disruptor = new Disruptor<RawEvent>(RawEvent.BITSTAMP_EVENT_FACTORY, RING_BUFFER_SIZE, exec);
         
         this.ringBuffer = disruptor.start();
         logger.info(String.format("Fired off Disruptor/RingBuffer of size[%d]", RING_BUFFER_SIZE));
@@ -51,12 +55,12 @@ public class BitstampConnect implements ConnectionEventListener,
         this.mapper = new ObjectMapper();
         
         String apiKey = API_KEY;
-        Pusher pusher = new Pusher(apiKey);
+        pusher = new Pusher(apiKey);
         pusher.connect(this);
         pusher.subscribe("live_trades", this, "trade");
         logger.info(String.format("Fired off Pusher Live Data with apiKey[%s] and subscribed to 'live_trades' channel'", API_KEY));
         
-        //TODO: Currently disabling orders data
+        //TODO: Currently disabling orders data, make it a property
         if(ORDERS_ENABLED)
         	pusher.subscribe("live_orders", this, "order_deleted","order_created","order_changed");
     }
@@ -191,5 +195,17 @@ public class BitstampConnect implements ConnectionEventListener,
     @Override
 	public AllData[] AllData(long offset) {
 		return AllData.NO_ALLS;
+	}
+
+	@Override
+	public void destroy() throws Exception {
+		// Destroy ring buffer, disruptor, shutdown pusher
+        pusher.unsubscribe("live_trades");
+        if(ORDERS_ENABLED)
+        	pusher.unsubscribe("live_orders");
+        pusher.disconnect();
+        
+        disruptor.shutdown();
+        exec.shutdown();
 	}
 }
