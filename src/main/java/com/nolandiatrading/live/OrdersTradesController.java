@@ -35,7 +35,7 @@ public class OrdersTradesController {
 	@Autowired
 	private MtGoxConnect mtGoxService;
 	
-	@RequestMapping(value = "{exch}/{seq}", method = RequestMethod.GET)
+	@RequestMapping(value = "/{exch}/{seq}", method = RequestMethod.GET)
 	public @ResponseBody AllData[] AllData(
 			@PathVariable("exch") String exch,
 			@PathVariable("seq") long seq) 
