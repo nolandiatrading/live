@@ -1,3 +1,17 @@
+$.windowActive = true;
+
+$.isWindowActive = function () {
+    return $.windowActive;
+};
+
+$(window).focus(function() {
+    $.windowActive = true;
+});
+
+$(window).blur(function() {
+    $.windowActive = false;
+});
+
 function createCandleStickWithVolumeChart(url, exch, next_seq, divId) {
 	// set the allowed units for data grouping
 	var initialGroupingUnits = [[
@@ -14,13 +28,18 @@ function createCandleStickWithVolumeChart(url, exch, next_seq, divId) {
 			events : {
 				load : function() {
 					CHART=this;
-					setInterval(function() {
-						$.getJSON(url+'/'+exch+"/"+NEXT_SEQ, function(data) {
+					var dataFetchInterval=100;
+					if($.windowActive)
+						dataFetchInterval = 100;
+					else
+						dataFetchInterval = 1000;
+					dataFetchInterval = setInterval(function() {
+						$.getJSON(url+"/"+exch+"/"+SEQ[exch], function(data) {
 							if(data === undefined || data.length == 0)
 							{
 								return;
 							}
-							console.log("Requesting data:"+url+'/'+exch+"/NEXT_SEQ="+NEXT_SEQ);
+							console.log("Requesting data:"+url+'/'+exch+"/SEQ="+SEQ[exch]);
 							dataLength = data.length;
 							if(CHART.series === undefined)
 							{
@@ -30,24 +49,38 @@ function createCandleStickWithVolumeChart(url, exch, next_seq, divId) {
 							var ohlcSeries = CHART.series[0];
 							var volSeries = CHART.series[1];
 							for (i = 0; i < dataLength; i++) {
-								ohlcSeries.addPoint([data[i].timestamp, //date
-								                    data[i].price, // open
-													data[i].price, // high
-													data[i].price, // low
-													data[i].price // close
-													], false, false, true);
+								if (!(exch in TS))
+								{
+									TS[exch] = data[i].timestamp-1;
+									console.log('setting init time');
+								}
 								
-								volSeries.addPoint([data[i].timestamp, //date
+								if(data[i].timestamp >= TS[exch])
+								{
+									TS[exch] = data[i].timestamp;
+									ohlcSeries.addPoint([data[i].timestamp, //date
+										                    data[i].price, // open
+															data[i].price, // high
+															data[i].price, // low
+															data[i].price // close
+															], false, false, true);
+									
+									volSeries.addPoint([data[i].timestamp, //date
 								                    data[i].amount
 													], false, false, true);
-								console.log("["+i+"][seq="+(i+NEXT_SEQ)+" data:"+data[i].timestamp+", "+data[i].price+", "+data[i].amount);
+									console.log("["+i+"][seq="+(i+SEQ[exch])+" data:"+data[i].timestamp+", "+data[i].price+", "+data[i].amount);
+								}
+								else
+								{
+									console.log("warning timestamp issue");
+								}
 							}
 							console.log("Added " + dataLength + " points");
 							
-							NEXT_SEQ = data[dataLength-1].seq + 1;
+							SEQ[exch] = data[dataLength-1].seq + 1;
 							CHART.redraw();
 						});}
-					, 1000);
+					, dataFetchInterval );
 				}
 			}
 		},

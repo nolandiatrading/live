@@ -24,10 +24,13 @@
         var contextPath = '<c:out value="${pageContext.request.contextPath}"/>';
         console.log(contextPath);
         var CHART;
-        var NEXT_SEQ;
+        var SEQ = new Object();
+        var TS = new Object();
         $(document).ready(function() {
-            NEXT_SEQ=0;
-            createCandleStickWithVolumeChart(contextPath+'/trades', 'bitstamp', NEXT_SEQ, 'chart1-container');
+            SEQ["bitstamp"] = 0;
+            SEQ["mtgox"] = 0;
+            createCandleStickWithVolumeChart(contextPath+'/'+'trades', 'bitstamp', SEQ["bitstamp"], 'bitstamp-container');
+            /* createCandleStickWithVolumeChart(contextPath+'/'+'trades', 'mtgox', SEQ["mtgox"], 'mtgox-container'); */
         });
     </script>
 </head>
@@ -60,7 +63,8 @@
                     <div class="panel-heading" >
                         <h3 class="panel-title" >Bitstamp</h3>
                     </div>
-                    <div id="chart1-container" style="height: 500px; min-width: 500px"></div>
+                    <div id="bitstamp-container" style="height: 500px; min-width: 500px"></div>
+                    <div id="mtgox-container" style="height: 500px; min-width: 500px"></div>
                 </div>
             </div>
         </div>
