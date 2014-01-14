@@ -41,6 +41,7 @@ public class BitstampConnect implements ConnectionEventListener,
     private static final int RING_BUFFER_SIZE = 1024*4; //Must be a power of 2
     private static final String API_KEY = "de504dc5763aeef9ff52";
     private static final boolean ORDERS_ENABLED = false; //TODO: temporary
+    private boolean SHUTTING_DOWN = false;
     private ExecutorService exec;
     private Disruptor<RawEvent> disruptor;
     private Pusher pusher;
@@ -56,7 +57,12 @@ public class BitstampConnect implements ConnectionEventListener,
         
         String apiKey = API_KEY;
         pusher = new Pusher(apiKey);
-        pusher.connect(this);
+        connectAndSubscribe();
+    }
+    
+    public void connectAndSubscribe()
+    {
+    	pusher.connect(this);
         pusher.subscribe("live_trades", this, "trade");
         logger.info(String.format("Fired off Pusher Live Data with apiKey[%s] and subscribed to 'live_trades' channel'", API_KEY));
         
@@ -78,6 +84,11 @@ public class BitstampConnect implements ConnectionEventListener,
         logger.info(String.format(
                 "[%d] Connection state changed from [%s] to [%s]",
                 timestamp(), change.getPreviousState(), change.getCurrentState()));
+        if(change.getCurrentState().toString() == "DISCONNECTED" && SHUTTING_DOWN == false)
+        {
+        	logger.info("Connection lost and we are not shutting down. Re-connecting.");
+        	connectAndSubscribe();
+        }
     }
 
     @Override
@@ -184,6 +195,7 @@ public class BitstampConnect implements ConnectionEventListener,
 	@Override
 	public void destroy() throws Exception {
 		// Destroy ring buffer, disruptor, shutdown pusher
+		SHUTTING_DOWN = true;
         pusher.unsubscribe("live_trades");
         if(ORDERS_ENABLED)
         	pusher.unsubscribe("live_orders");

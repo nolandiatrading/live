@@ -76,7 +76,7 @@ function createCandleStickWithVolumeChart(url, exch, next_seq, divId) {
 								}
 							}
 							console.log("Added " + dataLength + " points");
-							
+							document.title = "($"+data[dataLength-1].price+") Bitstamp";
 							SEQ[exch] = data[dataLength-1].seq + 1;
 							CHART.redraw();
 						});}
